@@ -17,34 +17,49 @@ const useTextAnalysis = () => {
     // Simple text analysis logic
     const newSuggestions = [];
 
-    // Check for common typos
-    const typos = ['teh', 'recieve', 'seperate', 'occured'];
-    typos.forEach(typo => {
-      const index = text.toLowerCase().indexOf(typo);
-      if (index !== -1) {
+    // Check for common typos and grammar issues
+    const issues = [
+      { pattern: /\bteh\b/gi, replacement: 'the', type: 'typo' },
+      { pattern: /\brecieve\b/gi, replacement: 'receive', type: 'typo' },
+      { pattern: /\bseperate\b/gi, replacement: 'separate', type: 'typo' },
+      { pattern: /\boccured\b/gi, replacement: 'occurred', type: 'typo' },
+      { pattern: /\bme and (\w+) (are|were|have|had)\b/gi, replacement: '$1 and I $2', type: 'grammar' },
+      { pattern: /\bit's\b(?=\s+(?:him|her|them|us|you|me))/gi, replacement: 'its', type: 'grammar' },
+      { pattern: /\b(your|you're|their|there|they're)\b/gi, replacement: (match) => `[${match}]`, type: 'attention' },
+    ];
+
+    issues.forEach(({ pattern, replacement, type }) => {
+      let match;
+      while ((match = pattern.exec(text)) !== null) {
         newSuggestions.push({
-          type: 'typo',
-          index,
-          suggestion: `"${typo}" might be a typo. Did you mean "${typo === 'teh' ? 'the' : typo.replace(/ie/g, 'ei')}"?`
+          type,
+          index: match.index,
+          length: match[0].length,
+          original: match[0],
+          suggestion: typeof replacement === 'function' ? replacement(match[0]) : replacement,
         });
       }
     });
 
-    // Check for basic grammar issues
-    if (text.toLowerCase().includes('me and')) {
+    // Check for sentence structure
+    if (!/[.!?]$/.test(text.trim())) {
       newSuggestions.push({
-        type: 'grammar',
-        index: text.toLowerCase().indexOf('me and'),
-        suggestion: 'Consider using "I and" or rephrase the sentence.'
+        type: 'structure',
+        index: text.length,
+        length: 0,
+        original: '',
+        suggestion: 'Consider ending your text with proper punctuation.',
       });
     }
 
-    // Suggest enhancements
-    if (text.split(' ').length < 10) {
+    // Suggest enhancements for short text
+    if (text.split(/\s+/).length < 10) {
       newSuggestions.push({
         type: 'enhancement',
         index: 0,
-        suggestion: 'Consider expanding your text to provide more context or details.'
+        length: text.length,
+        original: text,
+        suggestion: 'Consider expanding your text to provide more context or details.',
       });
     }
 
